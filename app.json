@@ -45,8 +45,10 @@
       ]
     ],
     "experiments": {
-      "typedRoutes": true,
-      "reactCompiler": true
+  "typedRoutes": true,
+  "reactCompiler": true,
+  "tsconfigPaths": true 
+
     },
     "notification": {
       "serviceWorkerPath": "/expo-service-worker.js",
