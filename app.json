@@ -10,10 +10,11 @@
     "newArchEnabled": true,
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.okyzaprabowo.todolist"
+      "bundleIdentifier": "com.lann.todoapp"
     },
     "android": {
-      "package": "com.okyzaprabowo.todolist",
+      "package": "com.lann.todoapp",
+      "googleServicesFile": "./google-services.json",
       "adaptiveIcon": {
         "backgroundColor": "#E6F4FE",
         "foregroundImage": "./assets/images/android-icon-foreground.png",
@@ -42,23 +43,20 @@
             "backgroundColor": "#000000"
           }
         }
-      ]
+      ],
+      "expo-web-browser"
     ],
     "experiments": {
-  "typedRoutes": true,
-  "reactCompiler": true,
-  "tsconfigPaths": true 
-
-    },
-    "notification": {
-      "serviceWorkerPath": "/expo-service-worker.js",
-      "vapidPublicKey": "BGHNHtDuWDhiDbmFZbtAOCm2d6b4EQMj1CDfP9DELdNHWGBZ0fGifFgdhzWqG7jaDDCpoLsI8cNsYiW2Ch9-5OU"
+      "typedRoutes": true,
+      "reactCompiler": true,
+      "tsconfigPaths": true
     },
     "extra": {
       "router": {},
       "eas": {
         "projectId": "2f3da30f-1104-4c09-b16f-f35983962ed9"
       }
-    }
+    },
+    "owner": "alxsy"
   }
 }

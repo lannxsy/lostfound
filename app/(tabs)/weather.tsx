@@ -7,6 +7,8 @@ import {
   StyleSheet,
   TextInput,
   View,
+  Image,
+  useColorScheme,
 } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
@@ -34,18 +36,15 @@ type WeatherApiResponse = {
 };
 
 const API_KEY = 'ace748b92ef04dabbdf232232243009';
-const BASE_URL = 'http://api.weatherapi.com/v1/current.json';
+const BASE_URL = 'https://api.weatherapi.com/v1/current.json';
 
 export default function WeatherScreen() {
-  const [query, setQuery] = useState('London');
+  const theme = useColorScheme();
+  const isDark = theme === 'dark';
+  const [query, setQuery] = useState('Bandung');
   const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [weather, setWeather] = useState<WeatherApiResponse | null>(null);
-
-  const locationLabel = useMemo(() => {
-    if (!weather) return '-';
-    return `${weather.location.name}, ${weather.location.country}`;
-  }, [weather]);
 
   const fetchWeather = async () => {
     const city = query.trim();
@@ -63,16 +62,12 @@ export default function WeatherScreen() {
       const json = await response.json();
 
       if (!response.ok) {
-        const message =
-          (json as { error?: { message?: string } })?.error?.message ??
-          'Gagal mengambil data cuaca.';
-        throw new Error(message);
+        throw new Error(json?.error?.message ?? 'Gagal mengambil data.');
       }
 
       setWeather(json as WeatherApiResponse);
     } catch (error) {
-      const message = error instanceof Error ? error.message : 'Unknown error';
-      setErrorMessage(message);
+      setErrorMessage(error instanceof Error ? error.message : 'Unknown error');
       setWeather(null);
     } finally {
       setIsLoading(false);
@@ -81,77 +76,74 @@ export default function WeatherScreen() {
 
   return (
     <ThemedView style={styles.container}>
-      <ScrollView contentContainerStyle={styles.content}>
-        <ThemedText type="title">Weather</ThemedText>
-        <ThemedText style={styles.subtitle}>
-          Cari cuaca realtime berdasarkan nama kota.
-        </ThemedText>
+      <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
 
-        <View style={styles.searchCard}>
+        {/* Search Bar - Dibuat lebih lebar dan kontras */}
+        <View style={styles.searchSection}>
           <TextInput
             value={query}
             onChangeText={setQuery}
-            placeholder="Contoh: London, Jakarta, Bandung"
-            placeholderTextColor="#94a3b8"
-            autoCapitalize="words"
-            style={styles.input}
-            returnKeyType="search"
+            placeholder="Cari Kota..."
+            placeholderTextColor={isDark ? '#94a3b8' : '#64748b'}
+            style={[
+              styles.input,
+              {
+                backgroundColor: isDark ? '#1e293b' : '#f1f5f9',
+                color: isDark ? '#f8fafc' : '#0f172a',
+                borderColor: isDark ? '#334155' : '#e2e8f0'
+              }
+            ]}
             onSubmitEditing={fetchWeather}
           />
-          <Pressable style={styles.button} onPress={fetchWeather} disabled={isLoading}>
-            <ThemedText type="defaultSemiBold" style={styles.buttonText}>
-              {isLoading ? 'Loading...' : 'Get Weather'}
-            </ThemedText>
+          <Pressable style={styles.searchButton} onPress={fetchWeather} disabled={isLoading}>
+            {isLoading ? (
+              <ActivityIndicator color="#fff" size="small" />
+            ) : (
+              <ThemedText style={styles.buttonText}>Cari</ThemedText>
+            )}
           </Pressable>
         </View>
 
-        {isLoading && (
-          <View style={styles.loadingWrap}>
-            <ActivityIndicator size="small" color="#2563eb" />
-            <ThemedText style={styles.loadingText}>Mengambil data cuaca...</ThemedText>
-          </View>
-        )}
-
-        {!!errorMessage && (
-          <View style={styles.errorCard}>
-            <ThemedText type="defaultSemiBold" style={styles.errorTitle}>
-              Request Error
-            </ThemedText>
+        {errorMessage && (
+          <View style={styles.errorBox}>
             <ThemedText style={styles.errorText}>{errorMessage}</ThemedText>
           </View>
         )}
 
         {weather && (
-          <View style={styles.weatherCard}>
-            <ThemedText type="subtitle">{locationLabel}</ThemedText>
-            <ThemedText style={styles.metaText}>
-              {weather.location.region} • Local time: {weather.location.localtime}
-            </ThemedText>
+          <View style={styles.mainDisplay}>
+            <ThemedText style={styles.cityName}>{weather.location.name}</ThemedText>
+            <ThemedText style={styles.countryName}>{weather.location.country}</ThemedText>
 
-            <View style={styles.tempRow}>
-              <ThemedText style={styles.tempMain}>{weather.current.temp_c.toFixed(1)}°C</ThemedText>
-              <ThemedText style={styles.conditionText}>{weather.current.condition.text}</ThemedText>
+            <View style={styles.tempContainer}>
+              <Image
+                source={{ uri: `https:${weather.current.condition.icon}` }}
+                style={styles.weatherIcon}
+                resizeMode="contain"
+              />
+              {/* Menghapus overlap dengan lineHeight yang pas */}
+              <ThemedText style={styles.tempBig}>{Math.round(weather.current.temp_c)}°</ThemedText>
+              <ThemedText style={styles.conditionDesc}>{weather.current.condition.text}</ThemedText>
             </View>
 
-            <View style={styles.grid}>
-              <View style={styles.gridItem}>
-                <ThemedText style={styles.gridLabel}>Feels Like</ThemedText>
-                <ThemedText type="defaultSemiBold">{weather.current.feelslike_c.toFixed(1)}°C</ThemedText>
-              </View>
-              <View style={styles.gridItem}>
-                <ThemedText style={styles.gridLabel}>Humidity</ThemedText>
-                <ThemedText type="defaultSemiBold">{weather.current.humidity}%</ThemedText>
-              </View>
-              <View style={styles.gridItem}>
-                <ThemedText style={styles.gridLabel}>Wind</ThemedText>
-                <ThemedText type="defaultSemiBold">
-                  {weather.current.wind_kph} kph {weather.current.wind_dir}
-                </ThemedText>
-              </View>
-              <View style={styles.gridItem}>
-                <ThemedText style={styles.gridLabel}>UV Index</ThemedText>
-                <ThemedText type="defaultSemiBold">{weather.current.uv}</ThemedText>
-              </View>
+            <View style={styles.statsGrid}>
+              {[
+                { label: 'Terasa', value: `${weather.current.feelslike_c}°` },
+                { label: 'Lembap', value: `${weather.current.humidity}%` },
+                { label: 'Angin', value: `${weather.current.wind_kph} km/j` },
+                { label: 'Indeks UV', value: weather.current.uv },
+              ].map((item, index) => (
+                <View
+                  key={index}
+                  style={[
+                    styles.statItem,
+                    { backgroundColor: isDark ? '#1e293b' : '#ffffff' }
+                  ]}
+                >
+                  <ThemedText style={styles.statLabel}>{item.label}</ThemedText>
+                  <ThemedText style={styles.statValue}>{item.value}</ThemedText>
+                </View>
+              ))}
             </View>
           </View>
         )}
@@ -161,115 +153,111 @@ export default function WeatherScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
+  container: { flex: 1 },
   content: {
-    padding: 16,
-    gap: 12,
+    paddingHorizontal: 24,
+    paddingTop: 60,
+    paddingBottom: 40,
+    alignItems: 'center'
   },
-  subtitle: {
-    fontSize: 14,
-    lineHeight: 20,
-    color: '#475569',
-  },
-  searchCard: {
-    backgroundColor: '#eef2ff',
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: '#c7d2fe',
-    padding: 12,
+  searchSection: {
+    flexDirection: 'row',
     gap: 10,
+    marginBottom: 40,
+    width: '100%',
+    maxWidth: 500,
   },
   input: {
-    borderWidth: 1,
-    borderColor: '#cbd5e1',
-    borderRadius: 10,
-    backgroundColor: '#ffffff',
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    fontSize: 15,
-    color: '#0f172a',
-  },
-  button: {
-    backgroundColor: '#2563eb',
-    borderRadius: 10,
-    paddingVertical: 10,
-    alignItems: 'center',
-  },
-  buttonText: {
-    color: '#ffffff',
-  },
-  loadingWrap: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    paddingVertical: 4,
-  },
-  loadingText: {
-    color: '#334155',
-    fontSize: 13,
-  },
-  errorCard: {
-    backgroundColor: '#fee2e2',
-    borderColor: '#fecaca',
-    borderWidth: 1,
-    borderRadius: 12,
-    padding: 12,
-    gap: 4,
-  },
-  errorTitle: {
-    color: '#b91c1c',
-  },
-  errorText: {
-    color: '#7f1d1d',
-    fontSize: 13,
-  },
-  weatherCard: {
-    backgroundColor: '#f0f9ff',
-    borderColor: '#bae6fd',
-    borderWidth: 1,
-    borderRadius: 12,
-    padding: 14,
-    gap: 10,
-  },
-  metaText: {
-    fontSize: 12,
-    color: '#475569',
-  },
-  tempRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-end',
-    gap: 10,
-  },
-  tempMain: {
-    fontSize: 34,
-    fontWeight: '700',
-    lineHeight: 40,
-    color: '#0c4a6e',
-  },
-  conditionText: {
+    flex: 1,
+    height: 52,
+    borderRadius: 16,
+    paddingHorizontal: 20,
     fontSize: 16,
-    color: '#0f172a',
-    fontWeight: '600',
+    borderWidth: 1,
   },
-  grid: {
+  searchButton: {
+    backgroundColor: '#2563eb',
+    paddingHorizontal: 24,
+    borderRadius: 16,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  buttonText: { color: '#fff', fontWeight: '700' },
+  mainDisplay: {
+    alignItems: 'center',
+    width: '100%',
+  },
+  cityName: {
+    fontSize: 34,
+    fontWeight: '800',
+    letterSpacing: -0.5,
+  },
+  countryName: {
+    fontSize: 16,
+    opacity: 0.5,
+    marginTop: 4,
+  },
+  tempContainer: {
+    alignItems: 'center',
+    marginVertical: 30,
+    width: '100%',
+  },
+  weatherIcon: {
+    width: 120,
+    height: 120,
+    marginBottom: -10,
+  },
+  tempBig: {
+    fontSize: 86,
+    fontWeight: '300',
+    lineHeight: 90, // Mencegah tabrakan dengan teks bawah
+    textAlign: 'center',
+  },
+  conditionDesc: {
+    fontSize: 22,
+    fontWeight: '600',
+    opacity: 0.9,
+    marginTop: 10,
+    textAlign: 'center',
+  },
+  statsGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 10,
+    gap: 15,
+    justifyContent: 'center',
+    width: '100%',
+    maxWidth: 500,
+    marginTop: 20,
   },
-  gridItem: {
+  statItem: {
     width: '47%',
-    backgroundColor: '#ffffff',
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: '#e2e8f0',
-    padding: 10,
-    gap: 4,
+    paddingVertical: 20,
+    paddingHorizontal: 15,
+    borderRadius: 24,
+    alignItems: 'center',
+    // Shadow ringan untuk mode light
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 10,
+    elevation: 3,
   },
-  gridLabel: {
-    fontSize: 12,
-    color: '#64748b',
+  statLabel: {
+    fontSize: 13,
+    opacity: 0.6,
+    marginBottom: 6,
+    fontWeight: '600',
   },
+  statValue: {
+    fontSize: 20,
+    fontWeight: '700',
+  },
+  errorBox: {
+    backgroundColor: '#fee2e2',
+    padding: 16,
+    borderRadius: 16,
+    width: '100%',
+    maxWidth: 500,
+  },
+  errorText: { color: '#ef4444', textAlign: 'center', fontWeight: '600' },
 });
