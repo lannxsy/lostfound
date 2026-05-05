@@ -1,12 +1,11 @@
 import { Redirect, Tabs } from 'expo-router';
 import React, { useEffect, useState } from 'react';
-
+import { Ionicons } from '@expo/vector-icons';
 import { HapticTab } from '@/components/haptic-tab';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
-import { auth } from '@/lib/firebase';
-
+import { auth } from '../lib/firebase';
 export default function TabLayout() {
   const colorScheme = useColorScheme();
   const [isReady, setIsReady] = useState(false);
@@ -44,13 +43,20 @@ export default function TabLayout() {
           tabBarIcon: ({ color }) => <IconSymbol size={28} name="paperplane.fill" color={color} />,
         }}
       />
-      <Tabs.Screen
-        name="weather"
-        options={{
-          title: 'Weather',
-          tabBarIcon: ({ color }) => <IconSymbol size={28} name="cloud.sun.fill" color={color} />,
-        }}
+  <Tabs.Screen
+  name="weather"
+  options={{
+    title: 'Weather',
+    // Pakai 'cloud' (tanpa -outline) agar logonya terisi/full
+    tabBarIcon: ({ color }) => (
+      <Ionicons 
+        size={28} 
+        name="cloud" 
+        color={color === '#000' || color === 'black' ? '#ffffff' : color} 
       />
+    ),
+  }}
+/>
     </Tabs>
   );
 }

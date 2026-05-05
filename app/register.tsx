@@ -15,7 +15,7 @@ import { createUserWithEmailAndPassword } from 'firebase/auth';
 
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { auth } from '@/lib/firebase';
+import { auth } from './lib/firebase';
 
 export default function RegisterScreen() {
   const router = useRouter();

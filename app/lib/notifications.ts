@@ -61,7 +61,6 @@ export async function registerForPushNotifications(): Promise<PushTokenResult> {
   }
 
   try {
-    // AMBIL PROJECT ID DARI APP.JSON (PENTING!)
     const projectId = 
       Constants.expoConfig?.extra?.eas?.projectId ?? 
       Constants.easConfig?.projectId;
@@ -69,10 +68,9 @@ export async function registerForPushNotifications(): Promise<PushTokenResult> {
     debugBase.projectIdToUse = projectId ?? null;
 
     if (!projectId) {
-      throw new Error('Project ID tidak ditemukan di app.json. Coba npx expo start --clear');
+      throw new Error('Project ID tidak ditemukan di app.json.');
     }
 
-    // PAKAI FUNGSI INI LAGI BIAR JADI ExponentPushToken
     const token = await Notifications.getExpoPushTokenAsync({
       projectId,
     });
@@ -91,4 +89,16 @@ export async function registerForPushNotifications(): Promise<PushTokenResult> {
       error: e.message || 'Gagal ambil token Expo',
     };
   }
+}
+
+// FUNGSI BARU BIAR TIDAK ERROR LAGI
+export async function scheduleLocalNotification(title: string, body: string) {
+  await Notifications.scheduleNotificationAsync({
+    content: {
+      title: title,
+      body: body,
+      sound: true,
+    },
+    trigger: null,
+  });
 }

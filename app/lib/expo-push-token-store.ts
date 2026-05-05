@@ -1,6 +1,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-import type { PushTokenResult } from '@/lib/notifications';
+import type { PushTokenResult } from './notifications';
 
 export type StoredExpoPushToken = {
   token: string;
