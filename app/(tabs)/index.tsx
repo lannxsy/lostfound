@@ -1,336 +1,337 @@
-import { useRouter } from 'expo-router';
-import { signOut } from 'firebase/auth';
+import React, { useEffect, useState } from 'react';
 import {
-  addDoc,
-  collection,
-  deleteDoc,
-  doc,
-  onSnapshot,
-  orderBy,
-  query,
-  updateDoc,
-} from 'firebase/firestore';
-import React, { useEffect, useState, useMemo } from 'react';
-import {
-  Alert,
+  ActivityIndicator,
   FlatList,
-  KeyboardAvoidingView,
+  Image,
   Modal,
-  Platform,
   Pressable,
+  ScrollView,
   StyleSheet,
   TextInput,
   View,
-  useColorScheme,
-  ScrollView,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import DateTimePicker, { DateTimePickerEvent } from '@react-native-community/datetimepicker';
+import { collection, onSnapshot, orderBy, query } from 'firebase/firestore';
 
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { auth, db } from '../lib/firebase';
-import { scheduleLocalNotification } from '../lib/notifications';
+import { db } from '../lib/firebase';
 
-interface Todo {
+export interface LostFoundItem {
   id: string;
-  text: string;
-  done: boolean;
+  type: 'lost' | 'found';
+  title: string;
+  description: string;
+  category: string;
+  location: string;
+  imageUrl: string;
+  contactName: string;
+  contactInfo: string;
+  status: 'open' | 'resolved';
   createdAt: number;
-  deadline?: number;
+  userId: string;
 }
 
-export default function HomeScreen() {
-  const router = useRouter();
-  const theme = useColorScheme();
-  const isDark = theme === 'dark';
+const CATEGORIES = ['Semua', 'Elektronik', 'Dokumen/KTM', 'Kunci', 'Pakaian', 'Tas', 'Lainnya'];
+const LOCATIONS = ['Semua Lokasi', 'Lab Komputer', 'Kelas', 'Kantin', 'Masjid', 'Parkiran', 'Perpustakaan', 'Lobby'];
 
-  const [userId, setUserId] = useState<string | null>(null);
-  const [todos, setTodos] = useState<Todo[]>([]);
+export default function FeedScreen() {
+  const [items, setItems] = useState<LostFoundItem[]>([]);
+  const [filtered, setFiltered] = useState<LostFoundItem[]>([]);
+  const [selectedItem, setSelectedItem] = useState<LostFoundItem | null>(null);
+  const [activeType, setActiveType] = useState<'all' | 'lost' | 'found'>('all');
+  const [activeCategory, setActiveCategory] = useState('Semua');
   const [searchQuery, setSearchQuery] = useState('');
-  const [modalVisible, setModalVisible] = useState(false);
-  const [todoText, setTodoText] = useState('');
-  const [editingId, setEditingId] = useState<string | null>(null);
-  const [deadline, setDeadline] = useState<Date>(new Date());
-  const [showPicker, setShowPicker] = useState(false);
-  const [pickerMode, setPickerMode] = useState<'date' | 'time'>('date');
-
-  const completedCount = useMemo(() => todos.filter((t) => t.done).length, [todos]);
-  const totalCount = todos.length;
-  const progressWidth = totalCount > 0 ? (completedCount / totalCount) * 100 : 0;
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    const unsubscribe = auth.onAuthStateChanged((user) => {
-      if (!user) { router.replace('/login'); return; }
-      setUserId(user.uid);
-    });
-    return unsubscribe;
-  }, [router]);
-
-  useEffect(() => {
-    if (!userId) return;
-    const q = query(collection(db, 'users', userId, 'todos'), orderBy('createdAt', 'desc'));
-    const unsubscribe = onSnapshot(q, (snap) => {
-      setTodos(snap.docs.map((d) => ({ id: d.id, ...(d.data() as Omit<Todo, 'id'>) })));
-    });
-    return unsubscribe;
-  }, [userId]);
-
-  const filteredTodos = useMemo(() => {
-    return todos.filter((todo) => todo.text.toLowerCase().includes(searchQuery.toLowerCase()));
-  }, [todos, searchQuery]);
-
-  const onDateChange = (event: DateTimePickerEvent, selectedDate?: Date) => {
-    setShowPicker(false);
-    if (event.type === 'set' && selectedDate) {
-      setDeadline(selectedDate);
-    }
-  };
-
-  const openAddModal = () => {
-    setEditingId(null);
-    setTodoText('');
-    setDeadline(new Date());
-    setModalVisible(true);
-  };
-
-  const openEditModal = (todo: Todo) => {
-    setEditingId(todo.id);
-    setTodoText(todo.text);
-    setDeadline(todo.deadline ? new Date(todo.deadline) : new Date());
-    setModalVisible(true);
-  };
-
-  const onSaveTodo = async () => {
-    const text = todoText.trim();
-    if (!text || !userId) return;
-
-    try {
-      if (editingId) {
-        await updateDoc(doc(db, 'users', userId, 'todos', editingId), {
-          text,
-          deadline: deadline.getTime(),
-        });
-        Alert.alert('Success', 'Mission updated! 🛡️');
-      } else {
-        await addDoc(collection(db, 'users', userId, 'todos'), {
-          text,
-          done: false,
-          createdAt: Date.now(),
-          deadline: deadline.getTime(),
-        });
-        Alert.alert('Order Received', 'New mission assigned! 🚀');
-        if (Platform.OS !== 'web' && deadline.getTime() > Date.now()) {
-          await scheduleLocalNotification('Mission Alert!', text);
-        }
-      }
-      setModalVisible(false);
-    } catch (e) {
-      Alert.alert('Error', 'Failed to communicate with HQ.');
-    }
-  };
-
-  const confirmDelete = (todoId: string) => {
-    Alert.alert(
-      'Terminate Mission?',
-      'Are you sure you want to delete this mission from the archives?',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        { 
-          text: 'Terminate', 
-          style: 'destructive', 
-          onPress: async () => {
-            if (!userId) return;
-            try {
-              await deleteDoc(doc(db, 'users', userId, 'todos', todoId));
-              if (Platform.OS !== 'ios') {
-                Alert.alert('Deleted', 'Mission record destroyed. 🗑️');
-              }
-            } catch (e) {
-              Alert.alert('Error', 'Termination failed.');
-            }
-          } 
-        }
-      ]
+    const q = query(
+      collection(db, 'lostfound'),
+      orderBy('createdAt', 'desc')
     );
-  };
+    const unsub = onSnapshot(q, (snap) => {
+      const data = snap.docs.map((d) => ({ id: d.id, ...(d.data() as Omit<LostFoundItem, 'id'>) }));
+      setItems(data);
+      setIsLoading(false);
+    });
+    return unsub;
+  }, []);
+
+  useEffect(() => {
+    let result = items;
+    if (activeType !== 'all') result = result.filter((i) => i.type === activeType);
+    if (activeCategory !== 'Semua') result = result.filter((i) => i.category === activeCategory);
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase();
+      result = result.filter((i) =>
+        i.title.toLowerCase().includes(q) ||
+        i.description.toLowerCase().includes(q) ||
+        i.location.toLowerCase().includes(q)
+      );
+    }
+    setFiltered(result);
+  }, [items, activeType, activeCategory, searchQuery]);
+
+  const formatDate = (ts: number) =>
+    new Date(ts).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' });
+
+  const typeColor = (type: 'lost' | 'found') => type === 'lost' ? '#ef4444' : '#3b82f6';
+  const typeLabel = (type: 'lost' | 'found') => type === 'lost' ? '🔴 Hilang' : '🔵 Ditemukan';
 
   return (
     <ThemedView style={styles.container}>
+      {/* HEADER */}
       <View style={styles.header}>
-        <View style={styles.headerInfo}>
-          <Ionicons name="umbrella" size={40} color="#ef4444" style={styles.umbrellaLogo} />
-          <View>
-            <ThemedText style={styles.dateLabel}>Umbrella Corporation</ThemedText>
-            <ThemedText type="title" style={styles.title}>Umbrella Task</ThemedText>
-          </View>
-        </View>
-        <Pressable style={styles.logoutIcon} onPress={() => signOut(auth)}>
-          <Ionicons name="log-out-outline" size={22} color="#ef4444" />
-        </Pressable>
+        <ThemedText style={styles.title}>Lost & Found</ThemedText>
+        <ThemedText style={styles.subtitle}>STMIK AMIK Bandung</ThemedText>
       </View>
 
-      <View style={[styles.progressCard, { backgroundColor: isDark ? '#1e293b' : '#fff' }]}>
-        <View style={styles.progressHeader}>
-          <ThemedText style={styles.progressText}>{completedCount}/{totalCount} Mission Clear</ThemedText>
-          <ThemedText style={styles.progressText}>{Math.round(progressWidth)}%</ThemedText>
-        </View>
-        <View style={styles.progressBarBg}>
-          <View style={[styles.progressBarFill, { width: `${progressWidth}%` }]} />
-        </View>
-      </View>
-
-      <View style={[styles.searchBar, { backgroundColor: isDark ? '#1e293b' : '#f1f5f9' }]}>
-        <Ionicons name="search" size={20} color="#94a3b8" />
-        <TextInput 
-          placeholder="Search mission..." 
-          style={[styles.searchInput, { color: isDark ? '#fff' : '#000' }]}
+      {/* SEARCH */}
+      <View style={styles.searchRow}>
+        <Ionicons name="search-outline" size={18} color="#4b5563" style={styles.searchIcon} />
+        <TextInput
+          style={styles.searchInput}
+          placeholder="Cari barang..."
+          placeholderTextColor="#4b5563"
           value={searchQuery}
           onChangeText={setSearchQuery}
-          placeholderTextColor="#94a3b8"
         />
       </View>
 
-      <FlatList
-        data={filteredTodos}
-        keyExtractor={(item) => item.id}
-        contentContainerStyle={styles.listContent}
-        renderItem={({ item }) => {
-          const isOverdue = item.deadline && item.deadline < Date.now() && !item.done;
-          return (
-            <View style={[styles.card, { backgroundColor: isDark ? '#1e293b' : '#fff' }]}>
-              <Pressable 
-                onPress={() => userId && updateDoc(doc(db, 'users', userId, 'todos', item.id), { done: !item.done })}
-                style={[styles.checkBtn, item.done && styles.checkBtnActive]}
-              >
-                {item.done && <Ionicons name="checkmark" size={16} color="white" />}
-              </Pressable>
-              
-              <View style={{ flex: 1 }}>
-                <ThemedText style={[styles.todoText, item.done && styles.todoTextDone]}>{item.text}</ThemedText>
-                {item.deadline && (
-                  <View style={styles.deadlineRow}>
-                    <Ionicons name="time-outline" size={14} color={isOverdue ? '#ef4444' : '#64748b'} />
-                    <ThemedText style={[styles.deadlineText, isOverdue ? { color: '#ef4444' } : null]}>
-                      {new Date(item.deadline).toLocaleString('id-ID', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}
-                    </ThemedText>
-                  </View>
-                )}
-              </View>
+      {/* TYPE FILTER */}
+      <View style={styles.filterRow}>
+        {(['all', 'lost', 'found'] as const).map((t) => (
+          <Pressable
+            key={t}
+            style={[styles.filterBtn, activeType === t && styles.filterBtnActive]}
+            onPress={() => setActiveType(t)}
+          >
+            <ThemedText style={[styles.filterBtnText, activeType === t && styles.filterBtnTextActive]}>
+              {t === 'all' ? 'Semua' : t === 'lost' ? '🔴 Hilang' : '🔵 Ketemu'}
+            </ThemedText>
+          </Pressable>
+        ))}
+      </View>
 
-              <View style={styles.actionButtons}>
-                <Pressable onPress={() => openEditModal(item)} style={styles.actionBtn}>
-                  <Ionicons name="pencil-outline" size={20} color="#2563eb" />
-                </Pressable>
-                <Pressable onPress={() => confirmDelete(item.id)} style={styles.actionBtn}>
-                  <Ionicons name="trash-outline" size={20} color="#ef4444" />
-                </Pressable>
-              </View>
-            </View>
-          );
-        }}
+      {/* CATEGORY FILTER */}
+      <FlatList
+        data={CATEGORIES}
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        keyExtractor={(item) => item}
+        contentContainerStyle={styles.catList}
+        renderItem={({ item }) => (
+          <Pressable
+            style={[styles.catChip, activeCategory === item && styles.catChipActive]}
+            onPress={() => setActiveCategory(item)}
+          >
+            <ThemedText style={[styles.catChipText, activeCategory === item && styles.catChipTextActive]}>
+              {item}
+            </ThemedText>
+          </Pressable>
+        )}
       />
 
-      <Pressable style={styles.fab} onPress={openAddModal}>
-        <Ionicons name="add" size={32} color="white" />
-      </Pressable>
+      {/* STATS */}
+      <View style={styles.statsBar}>
+        <ThemedText style={styles.statsText}>
+          {filtered.length} laporan ditemukan
+        </ThemedText>
+      </View>
 
-      <Modal visible={modalVisible} animationType="fade" transparent>
-        <KeyboardAvoidingView 
-          style={styles.modalOverlay} 
-          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        >
-          <View style={[styles.modalSheet, { backgroundColor: isDark ? '#0f172a' : '#fff' }]}>
-            <ScrollView bounces={false} showsVerticalScrollIndicator={false}>
-              <ThemedText style={styles.modalTitle}>{editingId ? 'Update Mission' : 'New Assignment'}</ThemedText>
-              
-              <ThemedText style={styles.label}>Objective Details:</ThemedText>
-              <TextInput
-                placeholder="Enter objective..."
-                style={[styles.modalInput, { 
-                  color: isDark ? '#fff' : '#000',
-                  borderColor: isDark ? '#334155' : '#e2e8f0' 
-                }]}
-                value={todoText}
-                onChangeText={setTodoText}
-                multiline
-                placeholderTextColor="#94a3b8"
-              />
-
-              <ThemedText style={styles.label}>Deadline Schedule:</ThemedText>
-              <View style={styles.pickerRow}>
-                <Pressable style={[styles.pickerBtn, { backgroundColor: isDark ? '#1e293b' : '#f1f5f9' }]} onPress={() => { setPickerMode('date'); setShowPicker(true); }}>
-                  <Ionicons name="calendar-outline" size={18} color="#2563eb" />
-                  <ThemedText style={styles.pickerBtnText}>{deadline.toLocaleDateString('id-ID')}</ThemedText>
-                </Pressable>
-                <Pressable style={[styles.pickerBtn, { backgroundColor: isDark ? '#1e293b' : '#f1f5f9' }]} onPress={() => { setPickerMode('time'); setShowPicker(true); }}>
-                  <Ionicons name="time-outline" size={18} color="#2563eb" />
-                  <ThemedText style={styles.pickerBtnText}>{deadline.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })}</ThemedText>
-                </Pressable>
-              </View>
-
-              {showPicker && (
-                <DateTimePicker
-                  value={deadline}
-                  mode={pickerMode}
-                  is24Hour={true}
-                  display={Platform.OS === 'ios' ? 'spinner' : 'default'}
-                  onChange={onDateChange}
-                />
+      {/* LIST */}
+      {isLoading ? (
+        <View style={styles.loadingState}>
+          <ActivityIndicator size="large" color="#3b82f6" />
+        </View>
+      ) : filtered.length === 0 ? (
+        <View style={styles.emptyState}>
+          <ThemedText style={styles.emptyEmoji}>🔍</ThemedText>
+          <ThemedText style={styles.emptyTitle}>Belum Ada Laporan</ThemedText>
+          <ThemedText style={styles.emptySubtitle}>
+            Belum ada laporan barang hilang/ditemukan.{'\n'}Tap tab <ThemedText style={styles.emptyBold}>Lapor</ThemedText> untuk membuat laporan!
+          </ThemedText>
+        </View>
+      ) : (
+        <FlatList
+          data={filtered}
+          keyExtractor={(item) => item.id}
+          contentContainerStyle={styles.listContent}
+          showsVerticalScrollIndicator={false}
+          renderItem={({ item }) => (
+            <Pressable style={styles.card} onPress={() => setSelectedItem(item)}>
+              {item.imageUrl ? (
+                <Image source={{ uri: item.imageUrl }} style={styles.cardThumb} />
+              ) : (
+                <View style={[styles.cardThumb, styles.cardThumbPlaceholder]}>
+                  <Ionicons name="image-outline" size={28} color="#4b5563" />
+                </View>
               )}
-
-              <View style={styles.modalActions}>
-                <Pressable style={styles.cancelBtn} onPress={() => setModalVisible(false)}>
-                  <ThemedText style={{ color: '#64748b', fontWeight: '600' }}>Cancel</ThemedText>
-                </Pressable>
-                <Pressable style={styles.saveBtn} onPress={onSaveTodo}>
-                  <ThemedText style={styles.saveBtnText}>Confirm Mission</ThemedText>
-                </Pressable>
+              <View style={styles.cardInfo}>
+                <View style={styles.cardTypeRow}>
+                  <View style={[styles.typeBadge, { backgroundColor: typeColor(item.type) + '20', borderColor: typeColor(item.type) + '60' }]}>
+                    <ThemedText style={[styles.typeBadgeText, { color: typeColor(item.type) }]}>
+                      {typeLabel(item.type)}
+                    </ThemedText>
+                  </View>
+                  {item.status === 'resolved' && (
+                    <View style={styles.resolvedBadge}>
+                      <ThemedText style={styles.resolvedText}>✅ Selesai</ThemedText>
+                    </View>
+                  )}
+                </View>
+                <ThemedText style={styles.cardTitle} numberOfLines={1}>{item.title}</ThemedText>
+                <View style={styles.cardMeta}>
+                  <Ionicons name="location-outline" size={12} color="#4b5563" />
+                  <ThemedText style={styles.cardMetaText}>{item.location}</ThemedText>
+                  <ThemedText style={styles.cardMetaDot}>·</ThemedText>
+                  <ThemedText style={styles.cardMetaText}>{formatDate(item.createdAt)}</ThemedText>
+                </View>
               </View>
-            </ScrollView>
+            </Pressable>
+          )}
+        />
+      )}
+
+      {/* DETAIL MODAL */}
+      <Modal visible={!!selectedItem} animationType="slide" transparent>
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalSheet}>
+            {selectedItem && (
+              <ScrollView showsVerticalScrollIndicator={false}>
+                {selectedItem.imageUrl ? (
+                  <Image source={{ uri: selectedItem.imageUrl }} style={styles.modalImage} />
+                ) : (
+                  <View style={[styles.modalImage, styles.modalImagePlaceholder]}>
+                    <Ionicons name="image-outline" size={48} color="#4b5563" />
+                  </View>
+                )}
+                <Pressable style={styles.closeBtn} onPress={() => setSelectedItem(null)}>
+                  <Ionicons name="close" size={20} color="#fff" />
+                </Pressable>
+
+                <View style={styles.modalContent}>
+                  <View style={[styles.typeBadge, { backgroundColor: typeColor(selectedItem.type) + '20', borderColor: typeColor(selectedItem.type) + '60', alignSelf: 'flex-start', marginBottom: 10 }]}>
+                    <ThemedText style={[styles.typeBadgeText, { color: typeColor(selectedItem.type) }]}>
+                      {typeLabel(selectedItem.type)}
+                    </ThemedText>
+                  </View>
+
+                  <ThemedText style={styles.modalTitle}>{selectedItem.title}</ThemedText>
+
+                  <View style={styles.tagRow}>
+                    <View style={styles.tag}>
+                      <ThemedText style={styles.tagText}>📦 {selectedItem.category}</ThemedText>
+                    </View>
+                    <View style={styles.tag}>
+                      <ThemedText style={styles.tagText}>📍 {selectedItem.location}</ThemedText>
+                    </View>
+                  </View>
+
+                  <ThemedText style={styles.sectionTitle}>Deskripsi</ThemedText>
+                  <ThemedText style={styles.description}>{selectedItem.description}</ThemedText>
+
+                  <ThemedText style={styles.sectionTitle}>Kontak</ThemedText>
+                  <View style={styles.contactCard}>
+                    <Ionicons name="person-circle-outline" size={36} color="#3b82f6" />
+                    <View style={{ marginLeft: 12 }}>
+                      <ThemedText style={styles.contactName}>{selectedItem.contactName}</ThemedText>
+                      <ThemedText style={styles.contactInfo}>{selectedItem.contactInfo}</ThemedText>
+                    </View>
+                  </View>
+
+                  <ThemedText style={styles.postedDate}>
+                    Diposting {formatDate(selectedItem.createdAt)}
+                  </ThemedText>
+                </View>
+              </ScrollView>
+            )}
           </View>
-        </KeyboardAvoidingView>
+        </View>
       </Modal>
     </ThemedView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1 },
-  header: { paddingTop: 60, paddingHorizontal: 25, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 },
-  headerInfo: { flexDirection: 'row', alignItems: 'center' },
-  umbrellaLogo: { marginRight: 12 },
-  dateLabel: { fontSize: 14, color: '#94a3b8', fontWeight: '600' },
-  title: { fontSize: 24, fontWeight: '900' },
-  logoutIcon: { padding: 10, backgroundColor: '#fee2e2', borderRadius: 12 },
-  progressCard: { marginHorizontal: 25, padding: 20, borderRadius: 24, marginBottom: 20, elevation: 2 },
-  progressHeader: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 10 },
-  progressText: { fontSize: 13, fontWeight: '700', color: '#64748b' },
-  progressBarBg: { height: 10, backgroundColor: '#f1f5f9', borderRadius: 5, overflow: 'hidden' },
-  progressBarFill: { height: '100%', backgroundColor: '#ef4444' }, // Red theme for Umbrella
-  searchBar: { marginHorizontal: 25, flexDirection: 'row', alignItems: 'center', paddingHorizontal: 15, borderRadius: 16, height: 50, marginBottom: 20 },
-  searchInput: { flex: 1, marginLeft: 10, fontSize: 16 },
-  listContent: { paddingHorizontal: 25, paddingBottom: 100 },
-  card: { flexDirection: 'row', alignItems: 'center', padding: 16, borderRadius: 20, marginBottom: 12, elevation: 1 },
-  checkBtn: { width: 26, height: 26, borderRadius: 8, borderWidth: 2, borderColor: '#ef4444', marginRight: 15, justifyContent: 'center', alignItems: 'center' },
-  checkBtnActive: { backgroundColor: '#ef4444' },
-  todoText: { fontSize: 16, fontWeight: '600' },
-  todoTextDone: { textDecorationLine: 'line-through', opacity: 0.5 },
-  deadlineRow: { flexDirection: 'row', alignItems: 'center', marginTop: 4, gap: 4 },
-  deadlineText: { fontSize: 12, color: '#64748b' },
-  actionButtons: { flexDirection: 'row', gap: 10 },
-  actionBtn: { padding: 5 },
-  fab: { position: 'absolute', bottom: 30, right: 30, width: 60, height: 60, borderRadius: 20, backgroundColor: '#ef4444', justifyContent: 'center', alignItems: 'center', elevation: 8 },
-  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'center', padding: 20 },
-  modalSheet: { borderRadius: 24, padding: 25, maxHeight: '90%' },
-  modalTitle: { fontSize: 24, fontWeight: '800', marginBottom: 20, textAlign: 'center' },
-  label: { fontSize: 14, fontWeight: '700', color: '#64748b', marginBottom: 8, marginTop: 10 },
-  modalInput: { fontSize: 16, borderWidth: 1.5, borderRadius: 12, padding: 15, minHeight: 80, textAlignVertical: 'top', marginBottom: 10 },
-  pickerRow: { flexDirection: 'row', gap: 10, marginBottom: 20 },
-  pickerBtn: { flex: 1, padding: 15, borderRadius: 12, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8 },
-  pickerBtnText: { fontWeight: '700', color: '#ef4444' },
-  modalActions: { flexDirection: 'column', gap: 10, marginTop: 10 },
-  saveBtn: { backgroundColor: '#ef4444', padding: 18, borderRadius: 16, alignItems: 'center' },
-  saveBtnText: { color: 'white', fontWeight: '800', fontSize: 16 },
-  cancelBtn: { padding: 15, alignItems: 'center' },
+  container: { flex: 1, backgroundColor: '#0a0a0a' },
+  header: { paddingTop: 60, paddingHorizontal: 24, marginBottom: 16 },
+  title: { fontSize: 28, fontWeight: '900', color: '#ffffff' },
+  subtitle: { fontSize: 13, color: '#3b82f6', marginTop: 2, fontWeight: '700' },
+  searchRow: {
+    flexDirection: 'row', alignItems: 'center',
+    marginHorizontal: 24, marginBottom: 12,
+    backgroundColor: '#111', borderRadius: 14,
+    borderWidth: 1, borderColor: '#1f2937',
+    paddingHorizontal: 14,
+  },
+  searchIcon: { marginRight: 8 },
+  searchInput: { flex: 1, paddingVertical: 13, color: '#fff', fontSize: 14, fontWeight: '500' },
+  filterRow: { flexDirection: 'row', paddingHorizontal: 24, gap: 8, marginBottom: 12 },
+  filterBtn: {
+    flex: 1, paddingVertical: 8, borderRadius: 12,
+    backgroundColor: '#111', borderWidth: 1, borderColor: '#1f2937',
+    alignItems: 'center',
+  },
+  filterBtnActive: { backgroundColor: '#1e3a5f', borderColor: '#3b82f6' },
+  filterBtnText: { fontSize: 12, fontWeight: '700', color: '#4b5563' },
+  filterBtnTextActive: { color: '#3b82f6' },
+  catList: { paddingHorizontal: 24, paddingBottom: 12, gap: 8 },
+  catChip: {
+    paddingHorizontal: 14, paddingVertical: 7, borderRadius: 20,
+    backgroundColor: '#111', borderWidth: 1, borderColor: '#1f2937',
+  },
+  catChipActive: { backgroundColor: '#1e3a5f', borderColor: '#3b82f6' },
+  catChipText: { fontSize: 12, fontWeight: '700', color: '#4b5563' },
+  catChipTextActive: { color: '#3b82f6' },
+  statsBar: { paddingHorizontal: 24, marginBottom: 8 },
+  statsText: { fontSize: 12, color: '#4b5563', fontWeight: '600' },
+  loadingState: { flex: 1, justifyContent: 'center', alignItems: 'center' },
+  emptyState: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingBottom: 80 },
+  emptyEmoji: { fontSize: 64, marginBottom: 16 },
+  emptyTitle: { fontSize: 20, fontWeight: '800', color: '#ffffff', marginBottom: 8 },
+  emptySubtitle: { fontSize: 14, color: '#4b5563', textAlign: 'center', lineHeight: 22 },
+  emptyBold: { fontWeight: '800', color: '#3b82f6' },
+  listContent: { paddingHorizontal: 24, paddingBottom: 100 },
+  card: {
+    flexDirection: 'row', alignItems: 'center',
+    backgroundColor: '#111', borderRadius: 18,
+    marginBottom: 12, overflow: 'hidden',
+    borderWidth: 1, borderColor: '#1f2937',
+  },
+  cardThumb: { width: 80, height: 80 },
+  cardThumbPlaceholder: { backgroundColor: '#1f2937', justifyContent: 'center', alignItems: 'center' },
+  cardInfo: { flex: 1, padding: 12 },
+  cardTypeRow: { flexDirection: 'row', gap: 6, marginBottom: 5 },
+  typeBadge: { paddingHorizontal: 8, paddingVertical: 3, borderRadius: 8, borderWidth: 1 },
+  typeBadgeText: { fontSize: 10, fontWeight: '800' },
+  resolvedBadge: { backgroundColor: '#1a2a1a', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 8 },
+  resolvedText: { fontSize: 10, fontWeight: '700', color: '#4ade80' },
+  cardTitle: { fontSize: 14, fontWeight: '700', color: '#f1f5f9', marginBottom: 5 },
+  cardMeta: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+  cardMetaText: { fontSize: 11, color: '#4b5563', fontWeight: '600' },
+  cardMetaDot: { fontSize: 11, color: '#4b5563' },
+  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.85)', justifyContent: 'flex-end' },
+  modalSheet: { backgroundColor: '#111', borderTopLeftRadius: 28, borderTopRightRadius: 28, maxHeight: '90%' },
+  modalImage: { width: '100%', height: 220, borderTopLeftRadius: 28, borderTopRightRadius: 28 },
+  modalImagePlaceholder: { backgroundColor: '#1f2937', justifyContent: 'center', alignItems: 'center' },
+  closeBtn: {
+    position: 'absolute', top: 16, left: 16,
+    backgroundColor: 'rgba(0,0,0,0.6)', borderRadius: 20, padding: 8,
+  },
+  modalContent: { padding: 20 },
+  modalTitle: { fontSize: 22, fontWeight: '900', color: '#ffffff', marginBottom: 12 },
+  tagRow: { flexDirection: 'row', gap: 8, marginBottom: 20 },
+  tag: { backgroundColor: '#1a2233', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 10, borderWidth: 1, borderColor: '#1e3a5f' },
+  tagText: { fontSize: 12, color: '#3b82f6', fontWeight: '700' },
+  sectionTitle: { fontSize: 13, fontWeight: '800', color: '#3b82f6', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 8, marginTop: 4 },
+  description: { fontSize: 14, color: '#d1d5db', lineHeight: 24, marginBottom: 20 },
+  contactCard: {
+    flexDirection: 'row', alignItems: 'center',
+    backgroundColor: '#1a2233', borderRadius: 14, padding: 14,
+    borderWidth: 1, borderColor: '#1e3a5f', marginBottom: 20,
+  },
+  contactName: { fontSize: 15, fontWeight: '700', color: '#f1f5f9' },
+  contactInfo: { fontSize: 13, color: '#3b82f6', fontWeight: '600', marginTop: 2 },
+  postedDate: { fontSize: 12, color: '#4b5563', fontWeight: '600', marginBottom: 40, textAlign: 'center' },
 });

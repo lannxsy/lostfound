@@ -1,31 +1,21 @@
 import { Link, useRouter } from 'expo-router';
 import React, { useEffect, useMemo, useState } from 'react';
 import {
-  Alert,
-  Pressable,
-  StyleSheet,
-  TextInput,
-  useColorScheme,
-  KeyboardAvoidingView,
-  Platform,
-  ScrollView,
-  ActivityIndicator, // Tambahkan ini
-  View
+  ActivityIndicator, Alert, Pressable, StyleSheet, TextInput,
+  KeyboardAvoidingView, Platform, ScrollView, View,
 } from 'react-native';
 import { signInWithEmailAndPassword } from 'firebase/auth';
+import { Ionicons } from '@expo/vector-icons';
 
 import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
 import { auth } from './lib/firebase';
 
 export default function LoginScreen() {
   const router = useRouter();
-  const theme = useColorScheme();
-  const isDark = theme === 'dark';
-
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [isLoading, setIsLoading] = useState(false); // State Loading
+  const [isLoading, setIsLoading] = useState(false);
+  const [showPass, setShowPass] = useState(false);
 
   const normalizedEmail = useMemo(() => email.trim().toLowerCase(), [email]);
 
@@ -38,220 +28,137 @@ export default function LoginScreen() {
 
   const onLogin = async () => {
     if (!normalizedEmail || !password) {
-      Alert.alert('Validasi', 'Email dan password wajib diisi.');
+      Alert.alert('Lengkapi Data', 'Email dan password wajib diisi.');
       return;
     }
-
-    setIsLoading(true); // Aktifkan loading
+    setIsLoading(true);
     try {
       await signInWithEmailAndPassword(auth, normalizedEmail, password);
       router.replace('/(tabs)');
-    } catch (e: any) {
-      const code = typeof e?.code === 'string' ? e.code : '';
-
-      // Error handling lebih spesifik biar UX mantap
-      if (code === 'auth/invalid-credential' || code === 'auth/wrong-password' || code === 'auth/user-not-found') {
-        Alert.alert('Gagal Login', 'Email atau password salah.');
-      } else if (code === 'auth/too-many-requests') {
-        Alert.alert('Gagal Login', 'Terlalu banyak percobaan. Coba lagi nanti.');
-      } else {
-        Alert.alert('Gagal login', e?.message ?? 'Terjadi kesalahan.');
-      }
+    } catch {
+      Alert.alert('Login Gagal', 'Email atau password salah.');
     } finally {
-      setIsLoading(false); // Matikan loading
+      setIsLoading(false);
     }
   };
 
-  const cardStyle = {
-    backgroundColor: isDark ? '#1e293b' : '#ffffff',
-    shadowColor: isDark ? '#000' : '#64748b',
-  };
-
   return (
-    <KeyboardAvoidingView
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      style={{ flex: 1 }}
-    >
-      <ScrollView
-        contentContainerStyle={styles.scrollContainer}
-        keyboardShouldPersistTaps="handled"
-        showsVerticalScrollIndicator={false}
-      >
-        <ThemedView style={styles.container}>
+    <View style={styles.container}>
+      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
+        <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
 
-          <ThemedView style={styles.header}>
-            <ThemedText type="title" style={styles.title}>Selamat Datang</ThemedText>
-            <ThemedText style={styles.subtitle}>Masuk untuk melanjutkan aplikasi</ThemedText>
-          </ThemedView>
+          {/* HERO */}
+          <View style={styles.hero}>
+            <View style={styles.logoCircle}>
+              <ThemedText style={styles.logoEmoji}>🥬</ThemedText>
+            </View>
+            <ThemedText style={styles.appName}>CookFridge</ThemedText>
+            <ThemedText style={styles.tagline}>Masak dari apa yang kamu punya</ThemedText>
+          </View>
 
-          <ThemedView style={[styles.card, cardStyle]}>
-            <ThemedView style={styles.form}>
+          {/* FORM */}
+          <View style={styles.card}>
+            <ThemedText style={styles.cardTitle}>Masuk</ThemedText>
 
-              <ThemedView style={styles.inputContainer}>
-                <ThemedText style={styles.label}>Email</ThemedText>
+            <View style={styles.inputGroup}>
+              <ThemedText style={styles.label}>Email</ThemedText>
+              <View style={styles.inputWrap}>
+                <Ionicons name="mail-outline" size={18} color="#4b5563" style={styles.inputIcon} />
                 <TextInput
-                  value={email}
-                  onChangeText={setEmail}
-                  autoCapitalize="none"
-                  autoCorrect={false}
-                  keyboardType="email-address"
-                  placeholder="email@contoh.com"
-                  editable={!isLoading} // Disable input pas loading
-                  placeholderTextColor={isDark ? '#64748b' : '#94a3b8'}
-                  style={[
-                    styles.input,
-                    {
-                      backgroundColor: isDark ? '#0f172a' : '#f8fafc',
-                      color: isDark ? '#f8fafc' : '#0f172a',
-                      borderColor: isDark ? '#334155' : '#e2e8f0',
-                      opacity: isLoading ? 0.7 : 1
-                    }
-                  ]}
+                  value={email} onChangeText={setEmail}
+                  placeholder="email@kamu.com" placeholderTextColor="#4b5563"
+                  style={styles.input} autoCapitalize="none" keyboardType="email-address"
                 />
-              </ThemedView>
+              </View>
+            </View>
 
-              <ThemedView style={styles.inputContainer}>
-                <ThemedText style={styles.label}>Password</ThemedText>
+            <View style={styles.inputGroup}>
+              <ThemedText style={styles.label}>Password</ThemedText>
+              <View style={styles.inputWrap}>
+                <Ionicons name="lock-closed-outline" size={18} color="#4b5563" style={styles.inputIcon} />
                 <TextInput
-                  value={password}
-                  onChangeText={setPassword}
-                  secureTextEntry
-                  placeholder="••••••••"
-                  editable={!isLoading} // Disable input pas loading
-                  placeholderTextColor={isDark ? '#64748b' : '#94a3b8'}
-                  style={[
-                    styles.input,
-                    {
-                      backgroundColor: isDark ? '#0f172a' : '#f8fafc',
-                      color: isDark ? '#f8fafc' : '#0f172a',
-                      borderColor: isDark ? '#334155' : '#e2e8f0',
-                      opacity: isLoading ? 0.7 : 1
-                    }
-                  ]}
+                  value={password} onChangeText={setPassword}
+                  secureTextEntry={!showPass} placeholder="••••••••"
+                  placeholderTextColor="#4b5563" style={[styles.input, { flex: 1 }]}
                 />
-              </ThemedView>
+                <Pressable onPress={() => setShowPass(!showPass)} style={styles.eyeBtn}>
+                  <Ionicons name={showPass ? 'eye-off-outline' : 'eye-outline'} size={18} color="#4b5563" />
+                </Pressable>
+              </View>
+            </View>
 
-              <Pressable
-                style={({ pressed }) => [
-                  styles.primaryButton,
-                  {
-                    opacity: (pressed || isLoading) ? 0.8 : 1,
-                    backgroundColor: isLoading ? '#64748b' : '#2563eb'
-                  }
-                ]}
-                onPress={onLogin}
-                disabled={isLoading} // Cegah spam klik
-              >
-                {isLoading ? (
-                  <ActivityIndicator color="#ffffff" />
-                ) : (
-                  <ThemedText type="defaultSemiBold" style={styles.primaryButtonText}>
-                    Login
-                  </ThemedText>
-                )}
+            <Pressable
+              style={({ pressed }) => [styles.primaryBtn, pressed && { opacity: 0.85 }]}
+              onPress={onLogin} disabled={isLoading}
+            >
+              {isLoading
+                ? <ActivityIndicator color="#0a0a0a" />
+                : <ThemedText style={styles.primaryBtnText}>Masuk</ThemedText>}
+            </Pressable>
+
+            <View style={styles.dividerRow}>
+              <View style={styles.dividerLine} />
+              <ThemedText style={styles.dividerText}>atau</ThemedText>
+              <View style={styles.dividerLine} />
+            </View>
+
+            <Link href="/register" asChild>
+              <Pressable style={styles.secondaryBtn}>
+                <ThemedText style={styles.secondaryBtnText}>Buat Akun Baru</ThemedText>
               </Pressable>
+            </Link>
+          </View>
 
-              <ThemedView style={styles.footer}>
-                <ThemedText style={styles.footerText}>
-                  Belum punya akun?{' '}
-                  <Link href="/register" asChild disabled={isLoading}>
-                    <ThemedText type="link" style={styles.linkText}>Register</ThemedText>
-                  </Link>
-                </ThemedText>
-              </ThemedView>
-
-            </ThemedView>
-          </ThemedView>
-
-        </ThemedView>
-      </ScrollView>
-    </KeyboardAvoidingView>
+        </ScrollView>
+      </KeyboardAvoidingView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  scrollContainer: {
-    flexGrow: 1,
+  container: { flex: 1, backgroundColor: '#0a0a0a' },
+  scroll: { flexGrow: 1, justifyContent: 'center', paddingHorizontal: 24, paddingVertical: 60 },
+
+  hero: { alignItems: 'center', marginBottom: 36 },
+  logoCircle: {
+    width: 80, height: 80, borderRadius: 24,
+    backgroundColor: '#0f2a1a', borderWidth: 2, borderColor: '#166534',
+    justifyContent: 'center', alignItems: 'center', marginBottom: 16,
   },
-  container: {
-    flex: 1,
-    padding: 24,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  header: {
-    marginBottom: 32,
-    alignItems: 'center',
-    width: '100%',
-    backgroundColor: 'transparent',
-  },
-  title: {
-    fontSize: 30,
-    fontWeight: '800',
-    textAlign: 'center',
-  },
-  subtitle: {
-    fontSize: 16,
-    opacity: 0.6,
-    textAlign: 'center',
-    marginTop: 4,
-  },
+  logoEmoji: { fontSize: 36 },
+  appName: { fontSize: 32, fontWeight: '900', color: '#ffffff', letterSpacing: -0.5 },
+  tagline: { fontSize: 14, color: '#4b5563', marginTop: 6, fontWeight: '500' },
+
   card: {
-    borderRadius: 28,
-    padding: 24,
-    width: '100%',
-    maxWidth: 400,
-    shadowOffset: { width: 0, height: 10 },
-    shadowOpacity: 0.1,
-    shadowRadius: 20,
-    elevation: 8,
+    backgroundColor: '#111', borderRadius: 24, padding: 24,
+    borderWidth: 1, borderColor: '#1f2937',
   },
-  form: {
-    gap: 18,
-    backgroundColor: 'transparent',
+  cardTitle: { fontSize: 20, fontWeight: '800', color: '#ffffff', marginBottom: 24 },
+
+  inputGroup: { marginBottom: 16 },
+  label: { fontSize: 12, color: '#4ade80', fontWeight: '700', marginBottom: 8, letterSpacing: 0.5 },
+  inputWrap: {
+    flexDirection: 'row', alignItems: 'center',
+    backgroundColor: '#0a0a0a', borderWidth: 1, borderColor: '#1f2937',
+    borderRadius: 14, paddingHorizontal: 14,
   },
-  inputContainer: {
-    gap: 8,
-    backgroundColor: 'transparent',
+  inputIcon: { marginRight: 10 },
+  input: { flex: 1, height: 50, color: '#ffffff', fontSize: 15 },
+  eyeBtn: { padding: 4 },
+
+  primaryBtn: {
+    backgroundColor: '#4ade80', borderRadius: 14,
+    height: 54, justifyContent: 'center', alignItems: 'center', marginTop: 8,
   },
-  label: {
-    fontSize: 14,
-    fontWeight: '600',
-    marginLeft: 4,
+  primaryBtnText: { color: '#0a0a0a', fontSize: 16, fontWeight: '800' },
+
+  dividerRow: { flexDirection: 'row', alignItems: 'center', marginVertical: 20, gap: 12 },
+  dividerLine: { flex: 1, height: 1, backgroundColor: '#1f2937' },
+  dividerText: { fontSize: 12, color: '#4b5563', fontWeight: '600' },
+
+  secondaryBtn: {
+    borderWidth: 1.5, borderColor: '#4ade80', borderRadius: 14,
+    height: 54, justifyContent: 'center', alignItems: 'center',
   },
-  input: {
-    height: 56,
-    borderWidth: 1,
-    borderRadius: 16,
-    paddingHorizontal: 16,
-    fontSize: 16,
-  },
-  primaryButton: {
-    marginTop: 10,
-    borderRadius: 16,
-    height: 56,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  primaryButtonText: {
-    color: '#ffffff',
-    fontSize: 16,
-    fontWeight: '700',
-  },
-  footer: {
-    marginTop: 12,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: 'transparent',
-  },
-  footerText: {
-    fontSize: 14,
-    opacity: 0.7,
-    textAlign: 'center',
-  },
-  linkText: {
-    fontSize: 14,
-    fontWeight: 'bold',
-    color: '#2563eb',
-  }
+  secondaryBtnText: { color: '#4ade80', fontSize: 15, fontWeight: '700' },
 });

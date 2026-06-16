@@ -1,13 +1,9 @@
 import { Redirect, Tabs } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import { Ionicons } from '@expo/vector-icons';
-import { HapticTab } from '@/components/haptic-tab';
-import { IconSymbol } from '@/components/ui/icon-symbol';
-import { Colors } from '@/constants/theme';
-import { useColorScheme } from '@/hooks/use-color-scheme';
 import { auth } from '../lib/firebase';
+
 export default function TabLayout() {
-  const colorScheme = useColorScheme();
   const [isReady, setIsReady] = useState(false);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
 
@@ -25,38 +21,54 @@ export default function TabLayout() {
   return (
     <Tabs
       screenOptions={{
-        tabBarActiveTintColor: Colors[colorScheme ?? 'light'].tint,
+        tabBarActiveTintColor: '#3b82f6',
+        tabBarInactiveTintColor: '#4b5563',
+        tabBarStyle: {
+          backgroundColor: '#111',
+          borderTopColor: '#1f2937',
+          borderTopWidth: 1,
+          height: 60,
+          paddingBottom: 8,
+        },
+        tabBarLabelStyle: {
+          fontSize: 11,
+          fontWeight: '700',
+        },
         headerShown: false,
-        tabBarButton: HapticTab,
       }}>
+
+      {/* Tab 1: Feed - semua laporan */}
       <Tabs.Screen
         name="index"
         options={{
-          title: 'Home',
-          tabBarIcon: ({ color }) => <IconSymbol size={28} name="house.fill" color={color} />,
+          title: 'Feed',
+          tabBarIcon: ({ color }) => (
+            <Ionicons size={24} name="search-outline" color={color} />
+          ),
         }}
       />
+
+      {/* Tab 2: Lapor - post barang hilang/ketemu */}
       <Tabs.Screen
         name="explore"
         options={{
-          title: 'Explorer',
-          tabBarIcon: ({ color }) => <IconSymbol size={28} name="paperplane.fill" color={color} />,
+          title: 'Lapor',
+          tabBarIcon: ({ color }) => (
+            <Ionicons size={24} name="camera-outline" color={color} />
+          ),
         }}
       />
-  <Tabs.Screen
-  name="weather"
-  options={{
-    title: 'Weather',
-    // Pakai 'cloud' (tanpa -outline) agar logonya terisi/full
-    tabBarIcon: ({ color }) => (
-      <Ionicons 
-        size={28} 
-        name="cloud" 
-        color={color === '#000' || color === 'black' ? '#ffffff' : color} 
+
+      {/* Tab 3: Milik Saya - postingan sendiri */}
+      <Tabs.Screen
+        name="weather"
+        options={{
+          title: 'Milik Saya',
+          tabBarIcon: ({ color }) => (
+            <Ionicons size={24} name="person-outline" color={color} />
+          ),
+        }}
       />
-    ),
-  }}
-/>
     </Tabs>
   );
 }

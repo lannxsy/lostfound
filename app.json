@@ -1,11 +1,11 @@
 {
   "expo": {
-    "name": "todo-list",
-    "slug": "todo-list",
+    "name": "Lost & Found",
+    "slug": "Lost & Found",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
-    "scheme": "todolist",
+    "scheme": "Lost & Found",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "ios": {
@@ -55,9 +55,9 @@
     "extra": {
       "router": {},
       "eas": {
-        "projectId": "2f3da30f-1104-4c09-b16f-f35983962ed9"
+        "projectId": "dcd71b69-6193-4aaa-bc7e-4865112ece53"
       }
     },
-    "owner": "alxsy"
+    "owner": "aradar"
   }
 }
