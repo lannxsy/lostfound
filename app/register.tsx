@@ -60,10 +60,10 @@ export default function RegisterScreen() {
           {/* HERO */}
           <View style={styles.hero}>
             <View style={styles.logoCircle}>
-              <ThemedText style={styles.logoEmoji}>🥬</ThemedText>
+              <Ionicons name="search" size={36} color="#3b82f6" />
             </View>
-            <ThemedText style={styles.appName}>CookFridge</ThemedText>
-            <ThemedText style={styles.tagline}>Daftar & mulai masak pintar</ThemedText>
+            <ThemedText style={styles.appName}>Lost & Found</ThemedText>
+            <ThemedText style={styles.tagline}>Daftar & mulai melapor</ThemedText>
           </View>
 
           {/* FORM */}
@@ -147,10 +147,9 @@ const styles = StyleSheet.create({
   hero: { alignItems: 'center', marginBottom: 36 },
   logoCircle: {
     width: 80, height: 80, borderRadius: 24,
-    backgroundColor: '#0f2a1a', borderWidth: 2, borderColor: '#166534',
+    backgroundColor: '#0f1c2e', borderWidth: 2, borderColor: '#1e3a5f',
     justifyContent: 'center', alignItems: 'center', marginBottom: 16,
   },
-  logoEmoji: { fontSize: 36 },
   appName: { fontSize: 32, fontWeight: '900', color: '#ffffff', letterSpacing: -0.5 },
   tagline: { fontSize: 14, color: '#4b5563', marginTop: 6, fontWeight: '500' },
 
@@ -161,7 +160,7 @@ const styles = StyleSheet.create({
   cardTitle: { fontSize: 20, fontWeight: '800', color: '#ffffff', marginBottom: 24 },
 
   inputGroup: { marginBottom: 16 },
-  label: { fontSize: 12, color: '#4ade80', fontWeight: '700', marginBottom: 8, letterSpacing: 0.5 },
+  label: { fontSize: 12, color: '#3b82f6', fontWeight: '700', marginBottom: 8, letterSpacing: 0.5 },
   inputWrap: {
     flexDirection: 'row', alignItems: 'center',
     backgroundColor: '#0a0a0a', borderWidth: 1, borderColor: '#1f2937',
@@ -172,18 +171,18 @@ const styles = StyleSheet.create({
   eyeBtn: { padding: 4 },
 
   primaryBtn: {
-    backgroundColor: '#4ade80', borderRadius: 14,
+    backgroundColor: '#3b82f6', borderRadius: 14,
     height: 54, justifyContent: 'center', alignItems: 'center', marginTop: 8,
   },
-  primaryBtnText: { color: '#0a0a0a', fontSize: 16, fontWeight: '800' },
+  primaryBtnText: { color: '#ffffff', fontSize: 16, fontWeight: '800' },
 
   dividerRow: { flexDirection: 'row', alignItems: 'center', marginVertical: 20, gap: 12 },
   dividerLine: { flex: 1, height: 1, backgroundColor: '#1f2937' },
   dividerText: { fontSize: 12, color: '#4b5563', fontWeight: '600' },
 
   secondaryBtn: {
-    borderWidth: 1.5, borderColor: '#4ade80', borderRadius: 14,
+    borderWidth: 1.5, borderColor: '#3b82f6', borderRadius: 14,
     height: 54, justifyContent: 'center', alignItems: 'center',
   },
-  secondaryBtnText: { color: '#4ade80', fontSize: 15, fontWeight: '700' },
+  secondaryBtnText: { color: '#3b82f6', fontSize: 15, fontWeight: '700' },
 });
