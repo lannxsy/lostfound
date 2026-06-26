@@ -1,7 +1,7 @@
 {
   "expo": {
     "name": "Lost & Found",
-    "slug": "Lost & Found",
+    "slug": "LostFound",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
@@ -55,7 +55,7 @@
     "extra": {
       "router": {},
       "eas": {
-        "projectId": "dcd71b69-6193-4aaa-bc7e-4865112ece53"
+        "projectId": "05924f3f-6cc1-4c32-9b66-de36e2aa8975"
       }
     },
     "owner": "alxsy"

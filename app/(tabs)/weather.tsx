@@ -10,16 +10,11 @@ import {
   View,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
 import { signOut } from 'firebase/auth';
 import {
-  collection,
-  deleteDoc,
-  doc,
-  onSnapshot,
-  orderBy,
-  query,
-  updateDoc,
-  where,
+  collection, deleteDoc, doc, onSnapshot,
+  orderBy, query, updateDoc, where,
 } from 'firebase/firestore';
 
 import { ThemedText } from '@/components/themed-text';
@@ -54,20 +49,19 @@ export default function MyPostsScreen() {
 
   const toggleStatus = async (item: LostFoundItem) => {
     const newStatus = item.status === 'open' ? 'resolved' : 'open';
-    const label = newStatus === 'resolved' ? 'Tandai Selesai?' : 'Buka Kembali?';
-    const msg = newStatus === 'resolved'
-      ? 'Tandai laporan ini sebagai selesai/barang sudah ditemukan pemiliknya?'
-      : 'Buka kembali laporan ini?';
-
-    Alert.alert(label, msg, [
-      { text: 'Batal', style: 'cancel' },
-      {
-        text: 'Ya', onPress: async () => {
-          await updateDoc(doc(db, 'lostfound', item.id), { status: newStatus });
-          setSelectedItem(null);
+    Alert.alert(
+      newStatus === 'resolved' ? 'Tandai Selesai?' : 'Buka Kembali?',
+      newStatus === 'resolved' ? 'Tandai laporan ini sebagai selesai?' : 'Buka kembali laporan ini?',
+      [
+        { text: 'Batal', style: 'cancel' },
+        {
+          text: 'Ya', onPress: async () => {
+            await updateDoc(doc(db, 'lostfound', item.id), { status: newStatus });
+            setSelectedItem(null);
+          }
         }
-      }
-    ]);
+      ]
+    );
   };
 
   const deletePost = (item: LostFoundItem) => {
@@ -86,9 +80,6 @@ export default function MyPostsScreen() {
   const formatDate = (ts: number) =>
     new Date(ts).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' });
 
-  const typeColor = (type: 'lost' | 'found') => type === 'lost' ? '#ef4444' : '#3b82f6';
-  const typeLabel = (type: 'lost' | 'found') => type === 'lost' ? '🔴 Hilang' : '🔵 Ditemukan';
-
   const openCount = myPosts.filter((p) => p.status === 'open').length;
   const resolvedCount = myPosts.filter((p) => p.status === 'resolved').length;
 
@@ -96,29 +87,32 @@ export default function MyPostsScreen() {
     <ThemedView style={styles.container}>
       {/* HEADER */}
       <View style={styles.header}>
-        <View>
-          <ThemedText style={styles.title}>Milik Saya</ThemedText>
-          <ThemedText style={styles.subtitle}>Halo, {userName} 👋</ThemedText>
+        <View style={styles.avatarWrap}>
+          <LinearGradient colors={['#6366f1', '#3b82f6']} style={styles.avatar}>
+            <ThemedText style={styles.avatarText}>{userName.charAt(0).toUpperCase()}</ThemedText>
+          </LinearGradient>
+          <View>
+            <ThemedText style={styles.greeting}>Halo, {userName} 👋</ThemedText>
+            <ThemedText style={styles.title}>Postingan Saya</ThemedText>
+          </View>
         </View>
         <Pressable style={styles.logoutBtn} onPress={() => signOut(auth)}>
-          <Ionicons name="log-out-outline" size={20} color="#3b82f6" />
+          <Ionicons name="log-out-outline" size={18} color="#ef4444" />
         </Pressable>
       </View>
 
-      {/* STAT CARD */}
-      <View style={styles.statCard}>
-        <View style={styles.statItem}>
+      {/* STAT CARDS */}
+      <View style={styles.statsRow}>
+        <View style={styles.statCard}>
           <ThemedText style={styles.statNumber}>{myPosts.length}</ThemedText>
-          <ThemedText style={styles.statLabel}>Total Laporan</ThemedText>
+          <ThemedText style={styles.statLabel}>Total</ThemedText>
         </View>
-        <View style={styles.statDivider} />
-        <View style={styles.statItem}>
-          <ThemedText style={[styles.statNumber, { color: '#f59e0b' }]}>{openCount}</ThemedText>
-          <ThemedText style={styles.statLabel}>Masih Aktif</ThemedText>
+        <View style={[styles.statCard, styles.statCardMid]}>
+          <ThemedText style={[styles.statNumber, { color: '#fbbf24' }]}>{openCount}</ThemedText>
+          <ThemedText style={styles.statLabel}>Aktif</ThemedText>
         </View>
-        <View style={styles.statDivider} />
-        <View style={styles.statItem}>
-          <ThemedText style={[styles.statNumber, { color: '#4ade80' }]}>{resolvedCount}</ThemedText>
+        <View style={styles.statCard}>
+          <ThemedText style={[styles.statNumber, { color: '#34d399' }]}>{resolvedCount}</ThemedText>
           <ThemedText style={styles.statLabel}>Selesai</ThemedText>
         </View>
       </View>
@@ -126,7 +120,9 @@ export default function MyPostsScreen() {
       {/* LIST */}
       {myPosts.length === 0 ? (
         <View style={styles.emptyState}>
-          <ThemedText style={styles.emptyEmoji}>📋</ThemedText>
+          <View style={styles.emptyIconWrap}>
+            <Ionicons name="document-text-outline" size={40} color="#6366f1" />
+          </View>
           <ThemedText style={styles.emptyTitle}>Belum Ada Laporan</ThemedText>
           <ThemedText style={styles.emptySubtitle}>
             Tap tab <ThemedText style={styles.emptyBold}>Lapor</ThemedText> untuk buat laporan{'\n'}barang hilang atau yang kamu temukan
@@ -139,35 +135,48 @@ export default function MyPostsScreen() {
           contentContainerStyle={styles.listContent}
           showsVerticalScrollIndicator={false}
           renderItem={({ item }) => (
-            <Pressable style={styles.card} onPress={() => setSelectedItem(item)}>
+            <Pressable
+              style={({ pressed }) => [styles.card, pressed && { opacity: 0.8 }]}
+              onPress={() => setSelectedItem(item)}
+            >
+              <View style={[styles.cardAccent, { backgroundColor: item.type === 'lost' ? '#ef4444' : '#34d399' }]} />
               {item.imageUrl ? (
                 <Image source={{ uri: item.imageUrl }} style={styles.cardThumb} />
               ) : (
                 <View style={[styles.cardThumb, styles.cardThumbPlaceholder]}>
-                  <Ionicons name="image-outline" size={24} color="#4b5563" />
+                  <Ionicons name="image-outline" size={22} color="#374151" />
                 </View>
               )}
               <View style={styles.cardInfo}>
                 <View style={styles.cardBadgeRow}>
-                  <View style={[styles.typeBadge, { backgroundColor: typeColor(item.type) + '20', borderColor: typeColor(item.type) + '60' }]}>
-                    <ThemedText style={[styles.typeBadgeText, { color: typeColor(item.type) }]}>
-                      {typeLabel(item.type)}
+                  <View style={[
+                    styles.typeBadge,
+                    item.type === 'lost' ? styles.typeBadgeLost : styles.typeBadgeFound
+                  ]}>
+                    <ThemedText style={[styles.typeBadgeText, { color: item.type === 'lost' ? '#fca5a5' : '#6ee7b7' }]}>
+                      {item.type === 'lost' ? '● Hilang' : '● Ditemukan'}
                     </ThemedText>
                   </View>
-                  <View style={[styles.statusBadge, item.status === 'resolved' && styles.statusBadgeResolved]}>
-                    <ThemedText style={[styles.statusBadgeText, item.status === 'resolved' && styles.statusBadgeTextResolved]}>
-                      {item.status === 'open' ? '🟡 Aktif' : '✅ Selesai'}
+                  <View style={[
+                    styles.statusBadge,
+                    item.status === 'resolved' ? styles.statusBadgeResolved : styles.statusBadgeOpen
+                  ]}>
+                    <ThemedText style={[
+                      styles.statusBadgeText,
+                      item.status === 'resolved' ? styles.statusTextResolved : styles.statusTextOpen
+                    ]}>
+                      {item.status === 'open' ? '● Aktif' : '● Selesai'}
                     </ThemedText>
                   </View>
                 </View>
                 <ThemedText style={styles.cardTitle} numberOfLines={1}>{item.title}</ThemedText>
                 <View style={styles.cardMeta}>
-                  <Ionicons name="location-outline" size={11} color="#4b5563" />
+                  <Ionicons name="location-outline" size={11} color="#6b7280" />
                   <ThemedText style={styles.cardMetaText}>{item.location} · {formatDate(item.createdAt)}</ThemedText>
                 </View>
               </View>
-              <Pressable onPress={() => deletePost(item)} style={styles.deleteBtn}>
-                <Ionicons name="trash-outline" size={18} color="#4b5563" />
+              <Pressable onPress={() => deletePost(item)} style={styles.deleteBtn} hitSlop={8}>
+                <Ionicons name="trash-outline" size={17} color="#374151" />
               </Pressable>
             </Pressable>
           )}
@@ -177,6 +186,7 @@ export default function MyPostsScreen() {
       {/* DETAIL MODAL */}
       <Modal visible={!!selectedItem} animationType="slide" transparent>
         <View style={styles.modalOverlay}>
+          <Pressable style={styles.modalBackdrop} onPress={() => setSelectedItem(null)} />
           <View style={styles.modalSheet}>
             {selectedItem && (
               <ScrollView showsVerticalScrollIndicator={false}>
@@ -184,11 +194,11 @@ export default function MyPostsScreen() {
                   <Image source={{ uri: selectedItem.imageUrl }} style={styles.modalImage} />
                 ) : (
                   <View style={[styles.modalImage, styles.modalImagePlaceholder]}>
-                    <Ionicons name="image-outline" size={48} color="#4b5563" />
+                    <Ionicons name="image-outline" size={48} color="#374151" />
                   </View>
                 )}
                 <Pressable style={styles.closeBtn} onPress={() => setSelectedItem(null)}>
-                  <Ionicons name="close" size={20} color="#fff" />
+                  <Ionicons name="close" size={18} color="#fff" />
                 </Pressable>
 
                 <View style={styles.modalContent}>
@@ -196,40 +206,49 @@ export default function MyPostsScreen() {
 
                   <View style={styles.tagRow}>
                     <View style={styles.tag}>
-                      <ThemedText style={styles.tagText}>📦 {selectedItem.category}</ThemedText>
+                      <Ionicons name="cube-outline" size={12} color="#818cf8" />
+                      <ThemedText style={styles.tagText}>{selectedItem.category}</ThemedText>
                     </View>
                     <View style={styles.tag}>
-                      <ThemedText style={styles.tagText}>📍 {selectedItem.location}</ThemedText>
+                      <Ionicons name="location-outline" size={12} color="#818cf8" />
+                      <ThemedText style={styles.tagText}>{selectedItem.location}</ThemedText>
                     </View>
                   </View>
 
-                  <ThemedText style={styles.sectionTitle}>Deskripsi</ThemedText>
-                  <ThemedText style={styles.description}>
-                    {selectedItem.description || 'Tidak ada deskripsi.'}
-                  </ThemedText>
+                  {selectedItem.description ? (
+                    <>
+                      <ThemedText style={styles.sectionTitle}>Deskripsi</ThemedText>
+                      <ThemedText style={styles.description}>{selectedItem.description}</ThemedText>
+                    </>
+                  ) : null}
 
                   {/* ACTION BUTTONS */}
                   <Pressable
-                    style={[styles.actionBtn, selectedItem.status === 'resolved' ? styles.actionBtnReopen : styles.actionBtnResolve]}
                     onPress={() => toggleStatus(selectedItem)}
+                    style={({ pressed }) => [{ opacity: pressed ? 0.85 : 1 }]}
                   >
-                    <Ionicons
-                      name={selectedItem.status === 'resolved' ? 'refresh-outline' : 'checkmark-circle-outline'}
-                      size={18}
-                      color="#fff"
-                    />
-                    <ThemedText style={styles.actionBtnText}>
-                      {selectedItem.status === 'resolved' ? 'Buka Kembali' : 'Tandai Selesai'}
-                    </ThemedText>
+                    <LinearGradient
+                      colors={selectedItem.status === 'resolved' ? ['#1e3a5f', '#3b82f6'] : ['#052e16', '#16a34a']}
+                      start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
+                      style={styles.actionBtn}
+                    >
+                      <Ionicons
+                        name={selectedItem.status === 'resolved' ? 'refresh-outline' : 'checkmark-circle-outline'}
+                        size={18} color="#fff"
+                      />
+                      <ThemedText style={styles.actionBtnText}>
+                        {selectedItem.status === 'resolved' ? 'Buka Kembali' : 'Tandai Selesai'}
+                      </ThemedText>
+                    </LinearGradient>
                   </Pressable>
 
                   <Pressable style={styles.deleteBtnModal} onPress={() => deletePost(selectedItem)}>
-                    <Ionicons name="trash-outline" size={18} color="#ef4444" />
+                    <Ionicons name="trash-outline" size={16} color="#ef4444" />
                     <ThemedText style={styles.deleteBtnModalText}>Hapus Laporan</ThemedText>
                   </Pressable>
 
                   <ThemedText style={styles.postedDate}>
-                    Diposting {formatDate(selectedItem.createdAt)}
+                    📅 Diposting {formatDate(selectedItem.createdAt)}
                   </ThemedText>
                 </View>
               </ScrollView>
@@ -242,79 +261,108 @@ export default function MyPostsScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#0a0a0a' },
+  container: { flex: 1, backgroundColor: '#080b14' },
+
   header: {
-    paddingTop: 60, paddingHorizontal: 24, paddingBottom: 20,
-    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start',
+    paddingTop: 60, paddingHorizontal: 22, paddingBottom: 20,
+    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
   },
-  title: { fontSize: 28, fontWeight: '900', color: '#ffffff' },
-  subtitle: { fontSize: 13, color: '#3b82f6', marginTop: 2, fontWeight: '600' },
+  avatarWrap: { flexDirection: 'row', alignItems: 'center', gap: 14 },
+  avatar: { width: 48, height: 48, borderRadius: 15, justifyContent: 'center', alignItems: 'center' },
+  avatarText: { fontSize: 20, fontWeight: '900', color: '#fff' },
+  greeting: { fontSize: 12, color: '#6b7280', fontWeight: '600' },
+  title: { fontSize: 20, fontWeight: '900', color: '#f1f5f9', letterSpacing: -0.4 },
   logoutBtn: {
-    backgroundColor: '#1a1a1a', padding: 10, borderRadius: 12,
-    borderWidth: 1, borderColor: '#1f2937',
+    backgroundColor: '#1a0a0a', padding: 10, borderRadius: 14,
+    borderWidth: 1, borderColor: '#ef444430',
+  },
+
+  statsRow: {
+    flexDirection: 'row', marginHorizontal: 22, marginBottom: 20,
+    backgroundColor: '#0f1117', borderRadius: 20, padding: 4,
+    borderWidth: 1, borderColor: '#1e2130', gap: 2,
   },
   statCard: {
-    marginHorizontal: 24, backgroundColor: '#111', borderRadius: 20,
-    flexDirection: 'row', padding: 20, marginBottom: 20,
-    borderWidth: 1, borderColor: '#1f2937',
+    flex: 1, alignItems: 'center', paddingVertical: 14, borderRadius: 16,
   },
-  statItem: { flex: 1, alignItems: 'center' },
-  statNumber: { fontSize: 22, fontWeight: '900', color: '#3b82f6' },
-  statLabel: { fontSize: 10, color: '#4b5563', fontWeight: '600', marginTop: 4, textTransform: 'uppercase', letterSpacing: 0.5 },
-  statDivider: { width: 1, backgroundColor: '#1f2937' },
-  emptyState: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingBottom: 80 },
-  emptyEmoji: { fontSize: 64, marginBottom: 16 },
-  emptyTitle: { fontSize: 20, fontWeight: '800', color: '#ffffff', marginBottom: 8 },
-  emptySubtitle: { fontSize: 14, color: '#4b5563', textAlign: 'center', lineHeight: 22 },
-  emptyBold: { fontWeight: '800', color: '#3b82f6' },
-  listContent: { paddingHorizontal: 24, paddingBottom: 100 },
+  statCardMid: {
+    backgroundColor: '#141822',
+    borderRadius: 14,
+  },
+  statNumber: { fontSize: 24, fontWeight: '900', color: '#818cf8' },
+  statLabel: { fontSize: 10, color: '#6b7280', fontWeight: '700', marginTop: 2, textTransform: 'uppercase', letterSpacing: 0.5 },
+
+  emptyState: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingBottom: 80, gap: 12 },
+  emptyIconWrap: {
+    width: 80, height: 80, borderRadius: 24,
+    backgroundColor: '#1e1b4b20', borderWidth: 1, borderColor: '#6366f130',
+    justifyContent: 'center', alignItems: 'center', marginBottom: 4,
+  },
+  emptyTitle: { fontSize: 18, fontWeight: '800', color: '#f1f5f9' },
+  emptySubtitle: { fontSize: 13, color: '#6b7280', textAlign: 'center', lineHeight: 22 },
+  emptyBold: { fontWeight: '800', color: '#818cf8' },
+
+  listContent: { paddingHorizontal: 20, paddingBottom: 100 },
   card: {
     flexDirection: 'row', alignItems: 'center',
-    backgroundColor: '#111', borderRadius: 18,
-    marginBottom: 12, overflow: 'hidden',
-    borderWidth: 1, borderColor: '#1f2937',
+    backgroundColor: '#0f1117', borderRadius: 18,
+    marginBottom: 10, overflow: 'hidden',
+    borderWidth: 1, borderColor: '#1e2130',
   },
-  cardThumb: { width: 76, height: 76 },
-  cardThumbPlaceholder: { backgroundColor: '#1f2937', justifyContent: 'center', alignItems: 'center' },
+  cardAccent: { width: 3, alignSelf: 'stretch' },
+  cardThumb: { width: 72, height: 72 },
+  cardThumbPlaceholder: { backgroundColor: '#141822', justifyContent: 'center', alignItems: 'center' },
   cardInfo: { flex: 1, padding: 12 },
   cardBadgeRow: { flexDirection: 'row', gap: 6, marginBottom: 5 },
   typeBadge: { paddingHorizontal: 7, paddingVertical: 3, borderRadius: 8, borderWidth: 1 },
+  typeBadgeLost: { backgroundColor: '#450a0a', borderColor: '#ef444440' },
+  typeBadgeFound: { backgroundColor: '#052e16', borderColor: '#34d39940' },
   typeBadgeText: { fontSize: 10, fontWeight: '800' },
-  statusBadge: { paddingHorizontal: 7, paddingVertical: 3, borderRadius: 8, backgroundColor: '#2a2200', borderWidth: 1, borderColor: '#f59e0b60' },
-  statusBadgeResolved: { backgroundColor: '#1a2a1a', borderColor: '#4ade8060' },
-  statusBadgeText: { fontSize: 10, fontWeight: '700', color: '#f59e0b' },
-  statusBadgeTextResolved: { color: '#4ade80' },
-  cardTitle: { fontSize: 14, fontWeight: '700', color: '#f1f5f9', marginBottom: 4 },
+  statusBadge: { paddingHorizontal: 7, paddingVertical: 3, borderRadius: 8, borderWidth: 1 },
+  statusBadgeOpen: { backgroundColor: '#1c1200', borderColor: '#fbbf2440' },
+  statusBadgeResolved: { backgroundColor: '#1e1b4b40', borderColor: '#818cf840' },
+  statusBadgeText: { fontSize: 10, fontWeight: '800' },
+  statusTextOpen: { color: '#fbbf24' },
+  statusTextResolved: { color: '#818cf8' },
+  cardTitle: { fontSize: 14, fontWeight: '700', color: '#e2e8f0', marginBottom: 4 },
   cardMeta: { flexDirection: 'row', alignItems: 'center', gap: 4 },
-  cardMetaText: { fontSize: 11, color: '#4b5563', fontWeight: '600' },
+  cardMetaText: { fontSize: 11, color: '#6b7280', fontWeight: '600' },
   deleteBtn: { padding: 16 },
-  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.85)', justifyContent: 'flex-end' },
-  modalSheet: { backgroundColor: '#111', borderTopLeftRadius: 28, borderTopRightRadius: 28, maxHeight: '90%' },
-  modalImage: { width: '100%', height: 200, borderTopLeftRadius: 28, borderTopRightRadius: 28 },
-  modalImagePlaceholder: { backgroundColor: '#1f2937', justifyContent: 'center', alignItems: 'center' },
-  closeBtn: {
-    position: 'absolute', top: 16, left: 16,
-    backgroundColor: 'rgba(0,0,0,0.6)', borderRadius: 20, padding: 8,
+
+  modalOverlay: { flex: 1, justifyContent: 'flex-end' },
+  modalBackdrop: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0,0,0,0.8)' },
+  modalSheet: {
+    backgroundColor: '#0f1117', borderTopLeftRadius: 28, borderTopRightRadius: 28,
+    maxHeight: '92%', borderWidth: 1, borderColor: '#1e2130',
   },
-  modalContent: { padding: 20 },
-  modalTitle: { fontSize: 22, fontWeight: '900', color: '#ffffff', marginBottom: 12 },
-  tagRow: { flexDirection: 'row', gap: 8, marginBottom: 20 },
-  tag: { backgroundColor: '#1a2233', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 10, borderWidth: 1, borderColor: '#1e3a5f' },
-  tagText: { fontSize: 12, color: '#3b82f6', fontWeight: '700' },
-  sectionTitle: { fontSize: 13, fontWeight: '800', color: '#3b82f6', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 8 },
-  description: { fontSize: 14, color: '#d1d5db', lineHeight: 24, marginBottom: 24 },
+  modalImage: { width: '100%', height: 220, borderTopLeftRadius: 28, borderTopRightRadius: 28 },
+  modalImagePlaceholder: { backgroundColor: '#141822', justifyContent: 'center', alignItems: 'center' },
+  closeBtn: {
+    position: 'absolute', top: 16, right: 16,
+    backgroundColor: 'rgba(0,0,0,0.7)', borderRadius: 20, padding: 8,
+  },
+  modalContent: { padding: 22 },
+  modalTitle: { fontSize: 22, fontWeight: '900', color: '#f1f5f9', marginBottom: 14 },
+  tagRow: { flexDirection: 'row', gap: 8, marginBottom: 20, flexWrap: 'wrap' },
+  tag: {
+    flexDirection: 'row', alignItems: 'center', gap: 5,
+    backgroundColor: '#1e1b4b20', paddingHorizontal: 12, paddingVertical: 7,
+    borderRadius: 12, borderWidth: 1, borderColor: '#6366f130',
+  },
+  tagText: { fontSize: 12, color: '#818cf8', fontWeight: '700' },
+  sectionTitle: { fontSize: 11, fontWeight: '800', color: '#6366f1', textTransform: 'uppercase', letterSpacing: 1.5, marginBottom: 8 },
+  description: { fontSize: 14, color: '#cbd5e1', lineHeight: 24, marginBottom: 22 },
+
   actionBtn: {
-    borderRadius: 16, paddingVertical: 15,
+    borderRadius: 16, paddingVertical: 16,
     flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
     gap: 8, marginBottom: 12,
   },
-  actionBtnResolve: { backgroundColor: '#166534' },
-  actionBtnReopen: { backgroundColor: '#1e3a5f' },
   actionBtnText: { fontSize: 15, fontWeight: '800', color: '#fff' },
   deleteBtnModal: {
     borderRadius: 16, paddingVertical: 15, flexDirection: 'row',
     alignItems: 'center', justifyContent: 'center', gap: 8,
-    backgroundColor: '#2a0a0a', borderWidth: 1, borderColor: '#ef444440', marginBottom: 20,
+    backgroundColor: '#1a0808', borderWidth: 1, borderColor: '#ef444430', marginBottom: 20,
   },
   deleteBtnModalText: { fontSize: 15, fontWeight: '700', color: '#ef4444' },
   postedDate: { fontSize: 12, color: '#4b5563', fontWeight: '600', textAlign: 'center', marginBottom: 40 },
