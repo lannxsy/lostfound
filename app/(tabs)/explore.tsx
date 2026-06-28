@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -33,6 +33,14 @@ export default function LaporScreen() {
   const [imageUri, setImageUri] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [focusedField, setFocusedField] = useState<string | null>(null);
+
+  // Auto-fill nama dari akun yang sedang login
+  useEffect(() => {
+    const user = auth.currentUser;
+    if (user?.displayName) {
+      setContactName(user.displayName);
+    }
+  }, []);
 
   const pickImage = async () => {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
@@ -93,8 +101,11 @@ export default function LaporScreen() {
         {
           text: 'OK', onPress: () => {
             setTitle(''); setDescription(''); setCategory('');
-            setLocation(''); setContactName(''); setContactInfo('');
+            setLocation(''); setContactInfo('');
             setImageUri(null); setType('lost');
+            // Reset nama ke displayName lagi setelah submit
+            const user = auth.currentUser;
+            setContactName(user?.displayName ?? '');
           }
         }
       ]);
